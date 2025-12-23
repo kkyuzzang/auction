@@ -1,0 +1,5 @@
+{
+  "name": "ClassRoom Sentence Auction",
+  "description": "A gamified classroom activity where students bid on sentences and organize them into boards with notes or sequences. Includes CSV/XLSX import and teacher monitoring.",
+  "requestFramePermissions": []
+}
