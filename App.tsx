@@ -106,7 +106,7 @@ const App: React.FC = () => {
       <div className="text-center mb-12 relative">
           <div className="text-4xl mb-2 opacity-80">🏛️</div>
           <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#F5E6AD] via-[#D4AF37] to-[#8A6E2F] tracking-tighter mb-4">AUCTION</h1>
-          <p className="text-[#D4AF37] font-bold text-lg md:text-2xl tracking-widest uppercase">Value Your Knowledge</p>
+          <p className="text-[#D4AF37] font-bold text-lg md:text-2xl tracking-widest">문장 경매에서 지식을 수집해보세요</p>
       </div>
       <div className="w-full max-w-md space-y-10">
         <div className="bg-[#2D0A0A] p-8 rounded-[40px] shadow-2xl border-2 border-[#4A0E0E]">

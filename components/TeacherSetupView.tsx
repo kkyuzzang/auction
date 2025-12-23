@@ -70,20 +70,32 @@ const TeacherSetupView: React.FC = () => {
       <div className="max-w-4xl w-full bg-white rounded-[50px] shadow-2xl p-10 border-t-[12px] border-[#D4AF37]">
         <h2 className="text-3xl font-black text-[#2D0A0A] mb-2 text-center">경매 시나리오 설계</h2>
         
-        <div className="flex justify-center gap-4 mb-8">
-            <button onClick={() => { setRoomMode(RoomMode.MEMO); setItems([{text:'', concept:''}]); }} className={`px-6 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.MEMO ? 'bg-[#2D0A0A] text-[#D4AF37]' : 'bg-gray-100 text-gray-400'}`}>📝 개념 매칭</button>
-            <button onClick={() => { setRoomMode(RoomMode.ORDER); setItems([{text:'', concept:'1'}]); }} className={`px-6 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.ORDER ? 'bg-[#2D0A0A] text-[#D4AF37]' : 'bg-gray-100 text-gray-400'}`}>🔢 순서 나열</button>
+        <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="flex gap-4">
+                <button onClick={() => { setRoomMode(RoomMode.MEMO); setItems([{text:'', concept:''}]); }} className={`px-8 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.MEMO ? 'bg-[#2D0A0A] text-[#D4AF37] shadow-lg' : 'bg-gray-100 text-gray-400'}`}>📝 개념 매칭 모드</button>
+                <button onClick={() => { setRoomMode(RoomMode.ORDER); setItems([{text:'', concept:'1'}]); }} className={`px-8 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.ORDER ? 'bg-[#2D0A0A] text-[#D4AF37] shadow-lg' : 'bg-gray-100 text-gray-400'}`}>🔢 순서 나열 모드</button>
+            </div>
+            <p className="text-xs font-bold text-gray-400 italic bg-gray-50 px-6 py-2 rounded-full">
+                {roomMode === RoomMode.MEMO 
+                    ? "각 문장과 어울리는 '개념(키워드)'을 맞추는 학습 모드입니다." 
+                    : "각 문장을 올바른 '논리적 순서'대로 배치하는 학습 모드입니다."}
+            </p>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-10">
             <FileImport onImport={handleImport} />
             <div className="flex flex-col gap-3">
                 <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">빠른 시작</label>
-                <button onClick={loadSampleData} className="w-full py-3 bg-blue-50 text-blue-600 rounded-3xl font-black text-xs hover:bg-blue-100 transition">💡 한글 샘플 로드</button>
+                <button onClick={loadSampleData} className="w-full py-3 bg-blue-50 text-blue-600 rounded-3xl font-black text-xs hover:bg-blue-100 transition border border-blue-100">💡 한글 샘플 로드</button>
             </div>
             <div className="flex flex-col gap-3">
-                <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">양식 다운로드</label>
-                <button onClick={downloadSampleExcel} className="w-full py-3 bg-green-50 text-green-600 rounded-3xl font-black text-xs hover:bg-green-100 transition">📥 엑셀 양식 받기</button>
+                <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">전용 양식</label>
+                <button 
+                    onClick={downloadSampleExcel} 
+                    className={`w-full py-3 rounded-3xl font-black text-xs transition border ${roomMode === RoomMode.MEMO ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100'}`}
+                >
+                    📥 {roomMode === RoomMode.MEMO ? '개념 매칭용' : '순서 나열용'} 양식 받기
+                </button>
             </div>
         </div>
 

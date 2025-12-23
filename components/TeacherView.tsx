@@ -11,11 +11,47 @@ const TeacherView: React.FC = () => {
 
   if (room.status === RoomStatus.FINISHED) {
     const sortedByScore = [...room.students].sort((a, b) => b.score - a.score);
+    const sortedByCoins = [...room.students].sort((a, b) => b.coins - a.coins);
+    const topScorer = sortedByScore[0];
+    const topRichest = sortedByCoins[0];
+    const isGod = topScorer.id === topRichest.id;
+
     return (
       <div className="min-h-screen bg-[#1A1A1A] p-10 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-10">
-            <h2 className="text-5xl font-black text-[#D4AF37] text-center mb-10">최종 랭킹 및 채점 리포트</h2>
-            <div className="grid grid-cols-1 gap-6">
+        <div className="max-w-6xl mx-auto space-y-12 pb-20">
+            <h2 className="text-6xl font-black text-[#D4AF37] text-center mb-16 tracking-tighter">🏆 HALL OF FAME</h2>
+
+            {/* 명예의 전당 카드 섹션 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-20">
+                {isGod ? (
+                    <div className="md:col-span-2 bg-gradient-to-b from-[#FFFDF5] to-[#F5E6AD] rounded-[60px] p-16 text-center shadow-[0_0_100px_rgba(212,175,55,0.4)] border-4 border-[#D4AF37] relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                        <span className="text-9xl block mb-6 animate-bounce">👑</span>
+                        <h3 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#8A6E2F] via-[#D4AF37] to-[#8A6E2F] mb-4">경매의 신</h3>
+                        <p className="text-4xl font-black text-[#2D0A0A] mb-2">{topScorer.nickname}</p>
+                        <p className="text-lg font-bold text-[#8A6E2F] uppercase tracking-[0.3em]">Perfect Domination: Score & Wealth</p>
+                    </div>
+                ) : (
+                    <React.Fragment>
+                        <div className="bg-[#FFFDF5] p-12 rounded-[50px] border-4 border-[#D4AF37] text-center shadow-2xl relative group hover:scale-[1.02] transition">
+                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-6xl">🏅</span>
+                            <h3 className="text-2xl font-black text-[#8A6E2F] mb-4 uppercase tracking-widest">최고 득점왕</h3>
+                            <p className="text-5xl font-black text-[#2D0A0A] mb-2">{topScorer.nickname}</p>
+                            <p className="text-xl font-bold text-[#D4AF37]">{topScorer.score.toLocaleString()} PTS</p>
+                        </div>
+                        <div className="bg-[#F5F5F5] p-12 rounded-[50px] border-4 border-gray-300 text-center shadow-2xl relative group hover:scale-[1.02] transition">
+                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-6xl">💰</span>
+                            <h3 className="text-2xl font-black text-gray-500 mb-4 uppercase tracking-widest">최고 자산가</h3>
+                            <p className="text-5xl font-black text-[#2D0A0A] mb-2">{topRichest.nickname}</p>
+                            <p className="text-xl font-bold text-gray-400">{topRichest.coins.toLocaleString()}c</p>
+                        </div>
+                    </React.Fragment>
+                )}
+            </div>
+
+            {/* 전체 랭킹 리스트 */}
+            <div className="space-y-6">
+                <h3 className="text-2xl font-black text-white/40 uppercase tracking-widest text-center mb-10">전체 랭킹 리포트</h3>
                 {sortedByScore.map((s, idx) => {
                     let correctCount = 0;
                     room.templates.forEach((temp, tIdx) => {
@@ -29,7 +65,7 @@ const TeacherView: React.FC = () => {
                     });
 
                     return (
-                        <div key={s.id} className="bg-white rounded-[40px] p-8 flex items-center gap-10 shadow-2xl border-l-[15px] border-[#D4AF37]">
+                        <div key={s.id} className="bg-white rounded-[40px] p-8 flex items-center gap-10 shadow-2xl border-l-[15px] border-[#D4AF37] hover:translate-x-2 transition">
                             <span className="text-4xl font-black text-gray-200">#{idx + 1}</span>
                             <div className="flex-1">
                                 <p className="text-2xl font-black text-[#2D0A0A]">{s.nickname}</p>
@@ -37,15 +73,19 @@ const TeacherView: React.FC = () => {
                                     수식: ({s.inventory.length}문장 × 10) + ({correctCount}정답 × 50) + ({s.bidCount}입찰 × 5)
                                 </p>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex flex-col items-end">
                                 <p className="text-[10px] font-black text-gray-400 uppercase">Total Score</p>
-                                <p className="text-5xl font-black text-[#D4AF37]">{s.score} PTS</p>
+                                <p className="text-5xl font-black text-[#D4AF37] leading-tight">{s.score} <span className="text-xs">PTS</span></p>
+                                <p className="text-xs font-bold text-gray-300">잔액: {s.coins.toLocaleString()}c</p>
                             </div>
                         </div>
                     );
                 })}
             </div>
-            <button onClick={() => window.location.reload()} className="w-full bg-[#2D0A0A] text-[#D4AF37] font-black py-5 rounded-3xl text-xl">메인으로</button>
+            
+            <div className="pt-10">
+                <button onClick={() => window.location.reload()} className="w-full bg-[#2D0A0A] text-[#D4AF37] font-black py-6 rounded-3xl text-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-[#D4AF37]/30 hover:bg-black transition">처음으로 돌아가기</button>
+            </div>
         </div>
       </div>
     );
