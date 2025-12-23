@@ -9,23 +9,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- PeerJS for Real-time Multiplayer without Server Setup -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-<style>
-    body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
-    .font-serif { font-family: 'Noto Serif KR', serif; }
-</style>
+    <style>
+        body { font-family: 'Inter', 'Noto Sans KR', sans-serif; margin: 0; padding: 0; }
+        .font-serif { font-family: 'Noto Serif KR', serif; }
+        #root { min-height: 100vh; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-[#1A1A1A]">
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

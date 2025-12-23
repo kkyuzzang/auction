@@ -1,26 +1,31 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Room, RoomStatus, RoomMode, Student, Bid, SentenceInstance, ActiveAuction, SentenceTemplate } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import { Room, RoomStatus, RoomMode, Student, SentenceInstance, SentenceTemplate } from './types.ts';
 
 declare const Peer: any;
+
+// UUID 생성 폴백 (crypto.randomUUID 미지원 브라우저 대비)
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
 
 let globalRoom: Room | null = null;
 const listeners: Array<() => void> = [];
 let peerInstance: any = null;
-let connections: any[] = []; // 선생님용: 학생들과의 연결들
-let studentConn: any = null; // 학생용: 선생님과의 연결
+let connections: any[] = [];
+let studentConn: any = null;
 
 const notify = () => {
   listeners.forEach(l => l());
-  // 선생님인 경우에만 모든 연결된 학생에게 상태 전송
   if (peerInstance && !studentConn && globalRoom) {
     connections.forEach(conn => {
       if (conn.open) {
         conn.send({ type: 'SYNC', room: globalRoom });
       }
     });
-    // 백업용 저장
-    localStorage.setItem('sentence_auction_state', JSON.stringify(globalRoom));
   }
 };
 
@@ -37,11 +42,15 @@ export const useRoomStore = () => {
     };
   }, []);
 
-  // 선생님: 방 생성 및 피어 서버 대기
   const createRoom = useCallback((teacherId: string, customCode: string) => {
     const code = customCode.toUpperCase().trim();
+    if (typeof Peer === 'undefined') {
+      alert('네트워크 라이브러리가 아직 로드되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+      return null;
+    }
+
     const room: Room = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       code,
       teacherId,
       mode: RoomMode.BOTH,
@@ -54,12 +63,10 @@ export const useRoomStore = () => {
     
     globalRoom = room;
 
-    // PeerJS 초기화 (ID를 룸코드로 설정)
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(`RSA-${code}`);
     
     peerInstance.on('open', () => {
-      console.log('Teacher Peer Open:', code);
       setIsPeerReady(true);
       notify();
     });
@@ -69,7 +76,6 @@ export const useRoomStore = () => {
       conn.on('data', (data: any) => {
         handleStudentAction(data, conn);
       });
-      // 새 학생이 들어오면 현재 상태 즉시 전송
       conn.on('open', () => {
         if (globalRoom) conn.send({ type: 'SYNC', room: globalRoom });
       });
@@ -85,12 +91,15 @@ export const useRoomStore = () => {
     return room;
   }, []);
 
-  // 학생: 선생님 피어에 접속
   const joinRoom = useCallback((code: string, nickname: string) => {
     const targetCode = code.toUpperCase().trim();
-    if (peerInstance) peerInstance.destroy();
+    if (typeof Peer === 'undefined') {
+      alert('네트워크 라이브러리 로딩 중입니다.');
+      return Promise.resolve(null);
+    }
     
-    peerInstance = new Peer(); // 학생은 랜덤 ID
+    if (peerInstance) peerInstance.destroy();
+    peerInstance = new Peer(); 
     
     return new Promise<string | null>((resolve) => {
       peerInstance.on('open', () => {
@@ -98,7 +107,6 @@ export const useRoomStore = () => {
         studentConn = conn;
 
         conn.on('open', () => {
-          // 접속 성공하면 조인 요청 전송
           conn.send({ type: 'JOIN', nickname });
           setIsPeerReady(true);
         });
@@ -113,28 +121,25 @@ export const useRoomStore = () => {
         });
 
         conn.on('error', () => {
-          alert('방을 찾을 수 없습니다. 코드를 확인해 주세요.');
+          alert('방을 찾을 수 없습니다.');
           resolve(null);
         });
       });
     });
   }, []);
 
-  // 선생님 전용: 학생들의 액션 처리
   const handleStudentAction = (data: any, conn: any) => {
     if (!globalRoom) return;
-
     switch (data.type) {
       case 'JOIN':
         const existing = globalRoom.students.find(s => s.nickname === data.nickname);
         if (!existing) {
-          const newStudent: Student = {
-            id: crypto.randomUUID(),
+          globalRoom.students.push({
+            id: generateId(),
             nickname: data.nickname,
             coins: globalRoom.initialCoins,
             inventory: [],
-          };
-          globalRoom.students.push(newStudent);
+          });
         }
         notify();
         break;
@@ -180,21 +185,12 @@ export const useRoomStore = () => {
     }
   };
 
-  // 공통 로직들 (선생님이 실행하면 notify를 통해 동기화됨)
   const finalizeSetup = useCallback((rawInput: string, mode: RoomMode, initialCoins: number) => {
     if (!globalRoom) return;
-    const templates: SentenceTemplate[] = rawInput
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        const [text, concept] = line.split('/').map(s => s.trim());
-        return { 
-          text: text || "내용 없음", 
-          concept: concept || (mode === RoomMode.ORDER ? "0" : "미지정") 
-        };
-      });
-    globalRoom.templates = templates;
+    globalRoom.templates = rawInput.split('\n').map(line => line.trim()).filter(l => l).map(line => {
+      const [text, concept] = line.split('/').map(s => s.trim());
+      return { text: text || "내용 없음", concept: concept || (mode === RoomMode.ORDER ? "0" : "미지정") };
+    });
     globalRoom.mode = mode;
     globalRoom.initialCoins = initialCoins;
     globalRoom.status = RoomStatus.LOBBY;
@@ -210,7 +206,7 @@ export const useRoomStore = () => {
         const randomIdx = Math.floor(Math.random() * templates.length);
         const template = templates[randomIdx];
         student.inventory.push({
-          id: crypto.randomUUID(),
+          id: generateId(),
           text: template.text,
           concept: template.concept,
           ownerId: student.id,
@@ -225,26 +221,19 @@ export const useRoomStore = () => {
   }, []);
 
   const startAuction = useCallback((studentId: string, instanceId: string) => {
-    if (studentConn) {
-      studentConn.send({ type: 'START_AUCTION', studentId, instanceId });
-    } else {
-      // 선생님이 직접 시작할 경우 (관리용)
+    if (studentConn) studentConn.send({ type: 'START_AUCTION', studentId, instanceId });
+    else {
       const seller = globalRoom?.students.find(s => s.id === studentId);
       const item = seller?.inventory.find(i => i.id === instanceId);
       if (globalRoom && seller && item) {
-        globalRoom.activeAuction = {
-            instanceId, sellerId: studentId, sellerNickname: seller.nickname,
-            text: item.text, concept: item.concept, highestBid: null
-        };
+        globalRoom.activeAuction = { instanceId, sellerId: studentId, sellerNickname: seller.nickname, text: item.text, concept: item.concept, highestBid: null };
         notify();
       }
     }
   }, []);
 
   const placeBid = useCallback((studentId: string, amount: number) => {
-    if (studentConn) {
-      studentConn.send({ type: 'BID', studentId, amount });
-    }
+    if (studentConn) studentConn.send({ type: 'BID', studentId, amount });
   }, []);
 
   const closeAuction = useCallback(() => {
@@ -270,18 +259,13 @@ export const useRoomStore = () => {
   }, []);
 
   const updateInventoryItem = useCallback((studentId: string, instanceId: string, updates: Partial<SentenceInstance>) => {
-    if (studentConn) {
-      if (updates.memo !== undefined) {
-        studentConn.send({ type: 'UPDATE_MEMO', studentId, instanceId, memo: updates.memo });
-      }
+    if (studentConn && updates.memo !== undefined) {
+      studentConn.send({ type: 'UPDATE_MEMO', studentId, instanceId, memo: updates.memo });
     }
   }, []);
 
   const finishRoom = useCallback(() => {
-    if (globalRoom) {
-      globalRoom.status = RoomStatus.FINISHED;
-      notify();
-    }
+    if (globalRoom) { globalRoom.status = RoomStatus.FINISHED; notify(); }
   }, []);
 
   const resetStore = useCallback(() => {
@@ -289,23 +273,9 @@ export const useRoomStore = () => {
     globalRoom = null;
     connections = [];
     studentConn = null;
-    localStorage.removeItem('sentence_auction_state');
     notify();
     window.location.reload();
   }, []);
 
-  return {
-    room: globalRoom,
-    isPeerReady,
-    createRoom,
-    finalizeSetup,
-    joinRoom,
-    startGame,
-    startAuction,
-    placeBid,
-    closeAuction,
-    updateInventoryItem,
-    finishRoom,
-    resetStore
-  };
+  return { room: globalRoom, isPeerReady, createRoom, finalizeSetup, joinRoom, startGame, startAuction, placeBid, closeAuction, updateInventoryItem, finishRoom, resetStore };
 };
