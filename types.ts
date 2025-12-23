@@ -26,6 +26,7 @@ export interface SentenceInstance {
   memo?: string;
   orderIndex: number;
   isSold: boolean;
+  assignedSlot?: number | null; // 학습지의 몇 번째 슬롯에 배치되었는지
 }
 
 export interface Bid {
@@ -49,6 +50,7 @@ export interface Student {
   nickname: string;
   coins: number;
   inventory: SentenceInstance[];
+  worksheetAnswers: { [key: number]: string }; // 슬롯 번호별 입력한 정답/개념
 }
 
 export interface Room {
