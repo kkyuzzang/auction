@@ -1,128 +1,122 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRoomStore } from '../store.ts';
-import { RoomStatus } from '../types.ts';
-import { GavelIcon, DashboardIcon } from './Icons.tsx';
-import { downloadCSV, formatResultsForExport } from '../utils.ts';
+import { RoomStatus, RoomMode } from '../types.ts';
 
 const TeacherView: React.FC = () => {
-  const { room, startGame, closeAuction, transferCoins, resetStore } = useRoomStore();
-  const [expandedStudents, setExpandedStudents] = useState<{ [key: string]: boolean }>({});
+  const { room, startGame, closeAuction, addTime, finishRoom } = useRoomStore();
 
   if (!room) return null;
 
-  const toggleStudent = (id: string) => {
-    setExpandedStudents(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  if (room.status === RoomStatus.FINISHED) {
+    // 승자 계산
+    const sortedByScore = [...room.students].sort((a, b) => b.score - a.score);
+    const sortedByCoins = [...room.students].sort((a, b) => b.coins - a.coins);
+    const topScorer = sortedByScore[0];
+    const topRichest = sortedByCoins[0];
+    const isGod = topScorer.id === topRichest.id;
 
-  const handleReward = (id: string) => {
-    const amount = parseInt(prompt("하사할 코인 양을 입력하세요:", "100") || "0");
-    if (amount > 0) transferCoins(id, amount);
-  };
+    return (
+      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center p-6 font-sans">
+        <div className="max-w-4xl w-full bg-white rounded-[60px] p-12 text-center shadow-[0_0_100px_rgba(212,175,55,0.3)] border-t-[15px] border-[#D4AF37]">
+            {isGod ? (
+                <div className="space-y-6">
+                    <span className="text-8xl block animate-bounce">👑</span>
+                    <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#F5E6AD] via-[#D4AF37] to-[#8A6E2F]">경매의 신</h2>
+                    <p className="text-4xl font-black text-[#2D0A0A]">{topScorer.nickname}</p>
+                    <p className="text-gray-400 font-bold uppercase tracking-widest">지식과 자산 모든 부문 석권</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-10">
+                    <div className="bg-[#FFFDF5] p-10 rounded-[40px] border-2 border-[#D4AF37] relative">
+                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-4xl">🏅</span>
+                        <h3 className="text-2xl font-black text-[#8A6E2F] mb-4">최고 득점왕</h3>
+                        <p className="text-4xl font-black mb-2">{topScorer.nickname}</p>
+                        <p className="text-lg font-bold text-[#D4AF37]">{topScorer.score} PTS</p>
+                    </div>
+                    <div className="bg-[#F5F5F5] p-10 rounded-[40px] border-2 border-gray-200 relative">
+                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-4xl">💰</span>
+                        <h3 className="text-2xl font-black text-gray-500 mb-4">최고 자산가</h3>
+                        <p className="text-4xl font-black mb-2">{topRichest.nickname}</p>
+                        <p className="text-lg font-bold text-gray-400">{topRichest.coins.toLocaleString()}c</p>
+                    </div>
+                </div>
+            )}
+            <button onClick={() => window.location.reload()} className="mt-16 bg-[#2D0A0A] text-white px-10 py-4 rounded-full font-black">메인으로</button>
+        </div>
+      </div>
+    );
+  }
 
-  const handleExportResults = () => {
-    const data = formatResultsForExport(room);
-    downloadCSV(`auction_results_${room.code}.csv`, data);
-  };
+  const currentSeller = room.students[room.currentSellerIdx];
 
   return (
-    <div className="min-h-screen bg-[#FFFDF5] text-[#1A1A1A] font-sans pb-20">
-      <header className="bg-[#2D0A0A] text-[#D4AF37] p-6 shadow-2xl sticky top-0 z-50 border-b-4 border-[#D4AF37]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-[#D4AF37] text-[#2D0A0A] p-2 rounded-lg font-black text-xl">🏛️ {room.code}</div>
-            <h1 className="text-xl font-black tracking-tight uppercase">Master Console</h1>
-          </div>
-          <div className="flex gap-3">
-            {room.status === RoomStatus.LOBBY && <button onClick={startGame} className="bg-[#D4AF37] text-[#2D0A0A] px-8 py-3 rounded-xl font-black hover:bg-white transition shadow-lg">옥션 개장</button>}
-            {room.activeAuction && <button onClick={closeAuction} className="bg-[#064E3B] text-white px-8 py-3 rounded-xl font-black hover:bg-[#065F46] transition shadow-lg border border-white/20">🔨 낙찰 마감</button>}
-            <button onClick={handleExportResults} className="bg-[#1A1A1A] text-[#D4AF37] px-8 py-3 rounded-xl font-black border border-[#D4AF37]">결과 보고서</button>
-            <button onClick={resetStore} className="text-rose-200/50 hover:text-rose-200 text-xs font-bold uppercase">Reset</button>
-          </div>
+    <div className="min-h-screen bg-[#FFFDF5] text-[#1A1A1A]">
+      <header className="bg-[#2D0A0A] text-[#D4AF37] p-6 shadow-2xl flex justify-between items-center border-b-4 border-[#D4AF37]">
+        <div className="flex items-center gap-4">
+            <span className="bg-[#D4AF37] text-black p-2 rounded-lg font-black tracking-widest uppercase">RSA-{room.code}</span>
+            <h1 className="text-xl font-black uppercase">Master Console</h1>
+        </div>
+        <div className="flex gap-4">
+            {room.status === RoomStatus.LOBBY && <button onClick={startGame} className="bg-[#D4AF37] text-black px-8 py-3 rounded-xl font-black">게임 시작</button>}
+            {room.status === RoomStatus.MARKET && <button onClick={finishRoom} className="bg-red-600 text-white px-8 py-3 rounded-xl font-black">최종 결과 발표</button>}
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-4 gap-8 mt-8">
-        <div className="lg:col-span-3 space-y-8">
-            {/* 경매 진행 화면 */}
-            <div className="bg-white rounded-[40px] shadow-2xl border-2 border-gray-100 overflow-hidden">
-                <div className="p-12 text-center min-h-[400px] flex flex-col justify-center bg-gradient-to-b from-white to-gray-50">
-                    {room.activeAuction ? (
-                        <>
-                            <p className="text-4xl md:text-6xl font-serif italic text-gray-800 leading-tight mb-12 px-10">"{room.activeAuction.text}"</p>
-                            <div className="flex justify-center gap-8">
-                                <div className="bg-[#FFFDF5] p-8 rounded-3xl border-2 border-[#D4AF37]/30 shadow-sm">
-                                    <span className="text-[10px] text-[#D4AF37] font-black uppercase mb-2 block">Highest Bidder</span>
-                                    <p className="text-3xl font-black text-[#2D0A0A]">{room.activeAuction.highestBid?.nickname || '입찰자 없음'}</p>
-                                </div>
-                                <div className="bg-[#2D0A0A] p-8 rounded-3xl border border-white/10 text-[#D4AF37] shadow-xl">
-                                    <span className="text-[10px] opacity-50 font-black uppercase mb-2 block tracking-widest">Current Price</span>
-                                    <p className="text-5xl font-black">{room.activeAuction.highestBid?.amount || 0}</p>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-gray-300 animate-pulse">
-                            <span className="text-8xl block mb-6">⚖️</span>
-                            <p className="text-2xl font-black uppercase tracking-[0.5em]">입찰 대기 중</p>
+      <main className="max-w-6xl mx-auto p-10 space-y-10">
+        <div className="bg-white rounded-[50px] shadow-2xl border-2 border-gray-100 p-12 text-center relative overflow-hidden">
+            {room.activeAuction ? (
+                <div className="space-y-8 animate-in fade-in zoom-in duration-300">
+                    <div className="text-[120px] font-black leading-none text-[#D4AF37] animate-pulse drop-shadow-2xl">
+                        {room.activeAuction.timeLeft}
+                    </div>
+                    <p className="text-5xl font-serif italic text-gray-800">"{room.activeAuction.text}"</p>
+                    <div className="flex justify-center gap-10">
+                        <div className="text-left">
+                            <span className="text-xs font-black text-gray-400 block mb-1">CURRENT BID</span>
+                            <p className="text-4xl font-black text-[#2D0A0A]">{room.activeAuction.highestBid?.amount.toLocaleString() || "1,000"}c</p>
+                            <span className="text-sm font-bold text-[#D4AF37]">{room.activeAuction.highestBid?.nickname || "입찰 대기"}</span>
                         </div>
+                        <div className="h-16 w-[2px] bg-gray-100"></div>
+                        <div className="text-left">
+                            <span className="text-xs font-black text-gray-400 block mb-1">SELLER</span>
+                            <p className="text-4xl font-black text-gray-400">{room.activeAuction.sellerNickname}</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-center gap-4 mt-10">
+                        <button onClick={addTime} className="bg-blue-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-105 transition">+ 1초 추가</button>
+                        <button onClick={closeAuction} className="bg-[#2D0A0A] text-[#D4AF37] px-8 py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition">🔨 즉시 마감</button>
+                    </div>
+                </div>
+            ) : (
+                <div className="py-20">
+                    <div className="text-8xl mb-6">⚖️</div>
+                    <p className="text-2xl font-black text-gray-300 uppercase tracking-widest mb-4">현재 판매 순번</p>
+                    {currentSeller ? (
+                        <div className="bg-[#FFFDF5] inline-block px-10 py-5 rounded-[30px] border-4 border-[#D4AF37] shadow-xl">
+                            <p className="text-4xl font-black text-[#2D0A0A]">{currentSeller.nickname} 님</p>
+                            <p className="text-sm font-bold text-[#D4AF37] mt-1">경매에 올릴 문장을 선택하거나 패스해주세요.</p>
+                        </div>
+                    ) : (
+                        <p className="text-gray-400">참여 중인 학생이 없습니다.</p>
                     )}
                 </div>
-            </div>
-
-            {/* 학생 현황 (접기/펴기 적용) */}
-            <div className="bg-white p-8 rounded-[40px] shadow-xl border-2 border-purple-50">
-                <h2 className="text-2xl font-black mb-8 flex items-center gap-3"><DashboardIcon className="w-6 h-6 text-purple-600"/> 학생 현황 (실시간)</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {room.students.map(student => (
-                        <div key={student.id} className="bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden">
-                            <div className="p-6 flex justify-between items-center bg-white border-b border-gray-50">
-                                <div className="flex items-center gap-3">
-                                    <span className="font-black text-gray-800 text-lg">{student.nickname}</span>
-                                    <span className="bg-[#FFFDF5] text-[#D4AF37] px-3 py-1 rounded-full text-xs font-black border border-[#D4AF37]/20">{student.coins}c</span>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleReward(student.id)} className="text-[10px] font-black text-white bg-blue-500 px-3 py-1.5 rounded-xl hover:bg-blue-600 transition">💰 하사</button>
-                                    <button onClick={() => toggleStudent(student.id)} className="text-[10px] font-black text-gray-400 hover:text-gray-800">
-                                        {expandedStudents[student.id] ? '접기 ▲' : '자산 보기 ▼'}
-                                    </button>
-                                </div>
-                            </div>
-                            {expandedStudents[student.id] && (
-                                <div className="p-6 space-y-3 bg-gray-50/50">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Inventory ({student.inventory.length})</p>
-                                    {student.inventory.length > 0 ? (
-                                        student.inventory.map(item => (
-                                            <div key={item.id} className="text-[11px] bg-white p-3 rounded-xl border border-gray-100 shadow-sm italic leading-tight">
-                                                "{item.text}" <span className="text-[#D4AF37] font-black ml-1">[{item.concept}]</span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-[10px] text-gray-300 italic">보유 문장 없음</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
+            )}
         </div>
 
-        {/* 사이드바 */}
-        <div className="space-y-6">
-            <div className="bg-[#2D0A0A] p-8 rounded-[40px] shadow-2xl border-t-4 border-[#D4AF37] text-[#D4AF37]">
-                <h2 className="text-xl font-black mb-6 flex items-center gap-3">🎩 Attendees ({room.students.length})</h2>
-                <div className="space-y-4">
-                    {room.students.map(s => (
-                        <div key={s.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
-                            <span className="font-bold text-white">{s.nickname}</span>
-                            <span className="text-xs font-black bg-[#D4AF37] text-[#2D0A0A] px-2 py-0.5 rounded-lg">{s.inventory.length}</span>
-                        </div>
-                    ))}
+        <div className="grid grid-cols-4 gap-6">
+            {room.students.map(s => (
+                <div key={s.id} className={`p-6 rounded-[35px] border-2 transition-all ${currentSeller?.id === s.id ? 'bg-[#2D0A0A] border-[#D4AF37] shadow-2xl scale-105' : 'bg-white border-gray-100'}`}>
+                    <div className="flex justify-between items-start mb-4">
+                        <span className={`font-black text-xl ${currentSeller?.id === s.id ? 'text-[#D4AF37]' : 'text-gray-800'}`}>{s.nickname}</span>
+                        {currentSeller?.id === s.id && <span className="text-[10px] font-black bg-[#D4AF37] text-black px-2 py-1 rounded-lg animate-pulse">SELLER</span>}
+                    </div>
+                    <div className={`text-2xl font-black ${currentSeller?.id === s.id ? 'text-white' : 'text-[#D4AF37]'}`}>{s.coins.toLocaleString()}c</div>
+                    <div className="mt-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Inventory: {s.inventory.length} items</div>
                 </div>
-            </div>
+            ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 };

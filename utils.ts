@@ -25,13 +25,14 @@ export const downloadCSV = (filename: string, data: any[]) => {
 };
 
 // Fix: Corrected property 'boardItems' to 'inventory' and removed non-existent 'room.sentences'
+// Fix: Corrected property 'memo' to 'concept' to match SentenceInstance type defined in types.ts
 export const formatResultsForExport = (room: Room) => {
   return room.students.map(student => ({
     '학생 이름': student.nickname,
     '남은 코인': student.coins,
     '낙찰된 문장 수': student.inventory.length,
     '활동 결과': student.inventory.map(item => {
-        return `[문장: ${item.text}, 메모: ${item.memo || '없음'}, 순서: ${item.orderIndex}]`;
+        return `[문장: ${item.text}, 개념: ${item.concept || '없음'}, 순서: ${item.orderIndex}]`;
     }).join(' | ')
   }));
 };

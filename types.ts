@@ -1,8 +1,7 @@
 
 export enum RoomMode {
-  MEMO = 'memo',
-  ORDER = 'order',
-  BOTH = 'both'
+  MEMO = 'memo', // 개념 매칭
+  ORDER = 'order' // 순서 매칭
 }
 
 export enum RoomStatus {
@@ -23,10 +22,8 @@ export interface SentenceInstance {
   concept: string;
   ownerId: string | null;
   ownerNickname: string | null;
-  memo?: string;
   orderIndex: number;
-  isSold: boolean;
-  assignedSlot?: number | null; // 학습지의 몇 번째 슬롯에 배치되었는지
+  assignedSlot?: number | null;
 }
 
 export interface Bid {
@@ -43,6 +40,7 @@ export interface ActiveAuction {
   text: string;
   concept: string;
   highestBid: Bid | null;
+  timeLeft: number; // 5초 카운트다운
 }
 
 export interface Student {
@@ -50,7 +48,8 @@ export interface Student {
   nickname: string;
   coins: number;
   inventory: SentenceInstance[];
-  worksheetAnswers: { [key: number]: string }; // 슬롯 번호별 입력한 정답/개념
+  worksheetAnswers: { [key: number]: string };
+  score: number;
 }
 
 export interface Room {
@@ -63,4 +62,5 @@ export interface Room {
   students: Student[];
   activeAuction: ActiveAuction | null;
   initialCoins: number;
+  currentSellerIdx: number; // 현재 판매 차례인 학생 인덱스
 }

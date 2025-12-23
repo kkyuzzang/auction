@@ -1,65 +1,85 @@
 
 import React, { useState } from 'react';
 import { useRoomStore } from '../store.ts';
-import { RoomMode } from '../types.ts';
-import FileImport from './FileImport.tsx';
+import { RoomMode, SentenceTemplate } from '../types.ts';
 
 const TeacherSetupView: React.FC = () => {
-  const { room, finalizeSetup, resetStore } = useRoomStore();
-  const [sentencesInput, setSentencesInput] = useState('');
-  const [roomMode, setRoomMode] = useState<RoomMode>(RoomMode.BOTH);
-  const [initialCoins, setInitialCoins] = useState(1000);
+  const { room, finalizeSetup } = useRoomStore();
+  const [roomMode, setRoomMode] = useState<RoomMode>(RoomMode.MEMO);
+  const [initialCoins, setInitialCoins] = useState(100000);
+  const [items, setItems] = useState<SentenceTemplate[]>([{ text: '', concept: '' }]);
 
-  const loadSample = () => {
-    const sample = [
-      "사과는 빨갛다 / 과일",
-      "사자는 백수의 왕이다 / 동물",
-      "하늘은 푸른색이다 / 자연",
-      "지구는 둥글다 / 과학",
-      "1 더하기 1은 2다 / 수학"
-    ].join('\n');
-    setSentencesInput(sample);
+  const addItem = () => setItems([...items, { text: '', concept: (roomMode === RoomMode.ORDER ? (items.length + 1).toString() : '') }]);
+  const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, field: keyof SentenceTemplate, val: string) => {
+    const next = [...items];
+    next[idx][field] = val;
+    setItems(next);
   };
 
-  if (!room) return null;
   const handleStart = () => {
-    if (!sentencesInput.trim()) { alert('데이터를 입력해 주세요.'); return; }
-    finalizeSetup(sentencesInput, roomMode, initialCoins);
+    const filtered = items.filter(i => i.text.trim() !== '');
+    if (filtered.length === 0) { alert('최소 1개 이상의 문장을 입력하세요.'); return; }
+    finalizeSetup(filtered, roomMode, initialCoins);
+  };
+
+  const modeDescription = {
+    [RoomMode.MEMO]: "학생들이 낙찰받은 문장에 알맞은 '개념'을 직접 입력하여 매칭하는 학습 모드입니다.",
+    [RoomMode.ORDER]: "문장들을 1번부터 차례대로 나열하여 논리적인 흐름이나 절차를 익히는 모드입니다."
   };
 
   return (
     <div className="min-h-screen bg-[#1A1A1A] p-6 flex items-center justify-center">
-      <div className="max-w-2xl w-full bg-white rounded-[50px] shadow-2xl p-12 border-t-[10px] border-[#D4AF37]">
-        <h2 className="text-4xl font-black text-[#2D0A0A] mb-10 text-center">경매장 세팅</h2>
-        <div className="space-y-8">
-            <div className="relative">
-                <label className="block text-xs font-black text-[#D4AF37] uppercase mb-2">문장 목록 (문장 / 정답)</label>
-                <textarea className="w-full h-40 bg-gray-50 border-2 border-gray-100 rounded-[30px] p-6 outline-none text-sm font-medium" placeholder="예: 문장 / 개념" value={sentencesInput} onChange={(e) => setSentencesInput(e.target.value)} />
-                <button onClick={loadSample} className="absolute top-8 right-4 bg-[#D4AF37] text-[#2D0A0A] px-3 py-1 rounded-full text-[10px] font-black hover:bg-black hover:text-white transition">샘플 불러오기</button>
-            </div>
-            
-            <div className="bg-[#FFFDF5] p-6 rounded-[30px] border-2 border-[#D4AF37]/20">
-                <FileImport onImport={(lines) => setSentencesInput(lines.join('\n'))} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase ml-2">경매 모드 선택</label>
-                    <select className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 font-black" value={roomMode} onChange={(e) => setRoomMode(e.target.value as RoomMode)}>
-                        <option value={RoomMode.MEMO}>📝 개념 매칭</option>
-                        <option value={RoomMode.ORDER}>🔢 논리 정렬</option>
-                        <option value={RoomMode.BOTH}>⚖️ 종합 학습</option>
-                    </select>
-                </div>
-                <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase ml-2">학생 초기 지급 금액</label>
-                    <input type="number" className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 font-black" value={initialCoins} onChange={(e) => setInitialCoins(Number(e.target.value))} />
-                </div>
-            </div>
+      <div className="max-w-4xl w-full bg-white rounded-[50px] shadow-2xl p-10 border-t-[12px] border-[#D4AF37]">
+        <h2 className="text-3xl font-black text-[#2D0A0A] mb-2 text-center">경매 시나리오 설계</h2>
+        
+        <div className="flex justify-center gap-4 mb-8">
+            <button onClick={() => { setRoomMode(RoomMode.MEMO); setItems([{text:'', concept:''}]); }} className={`px-6 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.MEMO ? 'bg-[#2D0A0A] text-[#D4AF37]' : 'bg-gray-100 text-gray-400'}`}>📝 개념 매칭</button>
+            <button onClick={() => { setRoomMode(RoomMode.ORDER); setItems([{text:'', concept:'1'}]); }} className={`px-6 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.ORDER ? 'bg-[#2D0A0A] text-[#D4AF37]' : 'bg-gray-100 text-gray-400'}`}>🔢 순서 나열</button>
         </div>
-        <div className="mt-12 flex gap-4">
-            <button onClick={resetStore} className="px-8 py-5 text-gray-400 font-bold uppercase hover:text-red-500 transition">Reset</button>
-            <button onClick={handleStart} className="flex-1 bg-[#2D0A0A] text-[#D4AF37] font-black py-5 rounded-[30px] shadow-2xl text-xl hover:bg-black transition border-b-4 border-[#8A6E2F]">🏛️ 개장하기</button>
+
+        <p className="text-center text-sm text-gray-500 mb-10 bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
+            "{modeDescription[roomMode]}"
+        </p>
+
+        <div className="space-y-6 max-h-[400px] overflow-y-auto pr-4 mb-10">
+            {items.map((item, idx) => (
+                <div key={idx} className="flex gap-4 items-center bg-gray-50 p-6 rounded-3xl border border-gray-100 relative group">
+                    <span className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-black text-gray-300 border-2 border-gray-100">{idx + 1}</span>
+                    <div className="flex-1 space-y-3">
+                        <input 
+                            placeholder="문장을 입력하세요" 
+                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-5 py-3 outline-none focus:border-[#D4AF37] font-serif" 
+                            value={item.text} 
+                            onChange={(e) => updateItem(idx, 'text', e.target.value)}
+                        />
+                        <div className="flex items-center gap-3">
+                            <label className="text-[10px] font-black text-gray-400 uppercase">{roomMode === RoomMode.ORDER ? '순서' : '개념(정답)'}</label>
+                            <input 
+                                placeholder={roomMode === RoomMode.ORDER ? "숫자" : "정답 개념"} 
+                                className="bg-white border-2 border-gray-100 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-[#D4AF37]" 
+                                value={item.concept} 
+                                readOnly={roomMode === RoomMode.ORDER}
+                                onChange={(e) => updateItem(idx, 'concept', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <button onClick={() => removeItem(idx)} className="opacity-0 group-hover:opacity-100 transition text-red-300 hover:text-red-500 font-black">✕</button>
+                </div>
+            ))}
+            <button onClick={addItem} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-3xl text-gray-400 font-black hover:bg-gray-50 transition">+ 항목 추가</button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8 items-end">
+            <div className="space-y-2">
+                <label className="text-xs font-black text-gray-400 uppercase ml-2">초기 자금 (Step 1,000)</label>
+                <div className="flex items-center bg-gray-50 rounded-2xl p-1 border-2 border-gray-100">
+                    <button onClick={() => setInitialCoins(c => Math.max(0, c - 1000))} className="w-12 h-12 bg-white rounded-xl shadow-sm font-black text-xl hover:bg-gray-100 transition">-</button>
+                    <input type="number" step="1000" className="flex-1 bg-transparent text-center font-black text-xl outline-none" value={initialCoins} onChange={(e) => setInitialCoins(Number(e.target.value))} />
+                    <button onClick={() => setInitialCoins(c => c + 1000)} className="w-12 h-12 bg-white rounded-xl shadow-sm font-black text-xl hover:bg-gray-100 transition">+</button>
+                </div>
+            </div>
+            <button onClick={handleStart} className="bg-[#2D0A0A] text-[#D4AF37] font-black py-5 rounded-3xl shadow-2xl text-xl hover:scale-[1.02] active:scale-[0.98] transition">🏛️ 경매장 개설</button>
         </div>
       </div>
     </div>
