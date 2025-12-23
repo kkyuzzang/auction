@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useRoomStore } from '../store.ts';
 import { RoomMode, SentenceTemplate } from '../types.ts';
+import FileImport from './FileImport.tsx';
 
 const TeacherSetupView: React.FC = () => {
   const { room, finalizeSetup } = useRoomStore();
@@ -17,15 +18,38 @@ const TeacherSetupView: React.FC = () => {
     setItems(next);
   };
 
+  const handleImport = (lines: string[]) => {
+    const newItems = lines.map((line, idx) => {
+        const parts = line.split(' / ');
+        return {
+            text: parts[0] || "",
+            concept: parts[1] || (roomMode === RoomMode.ORDER ? (idx + 1).toString() : "")
+        };
+    });
+    setItems(newItems);
+  };
+
+  const loadSampleData = () => {
+    if (roomMode === RoomMode.MEMO) {
+        setItems([
+            { text: "Earth rotates on its axis once every 24 hours.", concept: "Rotation" },
+            { text: "Earth travels around the Sun once every 365 days.", concept: "Revolution" },
+            { text: "The moon orbits the Earth once every 27.3 days.", concept: "Lunar Orbit" }
+        ]);
+    } else {
+        setItems([
+            { text: "First, prepare all the ingredients.", concept: "1" },
+            { text: "Second, heat the pan with some oil.", concept: "2" },
+            { text: "Third, sauté the onions and garlic.", concept: "3" },
+            { text: "Finally, serve and enjoy your meal.", concept: "4" }
+        ]);
+    }
+  };
+
   const handleStart = () => {
     const filtered = items.filter(i => i.text.trim() !== '');
     if (filtered.length === 0) { alert('최소 1개 이상의 문장을 입력하세요.'); return; }
     finalizeSetup(filtered, roomMode, initialCoins);
-  };
-
-  const modeDescription = {
-    [RoomMode.MEMO]: "학생들이 낙찰받은 문장에 알맞은 '개념'을 직접 입력하여 매칭하는 학습 모드입니다.",
-    [RoomMode.ORDER]: "문장들을 1번부터 차례대로 나열하여 논리적인 흐름이나 절차를 익히는 모드입니다."
   };
 
   return (
@@ -38,11 +62,15 @@ const TeacherSetupView: React.FC = () => {
             <button onClick={() => { setRoomMode(RoomMode.ORDER); setItems([{text:'', concept:'1'}]); }} className={`px-6 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.ORDER ? 'bg-[#2D0A0A] text-[#D4AF37]' : 'bg-gray-100 text-gray-400'}`}>🔢 순서 나열</button>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mb-10 bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
-            "{modeDescription[roomMode]}"
-        </p>
+        <div className="grid grid-cols-2 gap-4 mb-10">
+            <FileImport onImport={handleImport} />
+            <div className="flex flex-col gap-3">
+                <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">빠른 시작</label>
+                <button onClick={loadSampleData} className="w-full py-3 bg-gray-100 rounded-3xl font-black text-gray-500 hover:bg-gray-200 transition">💡 샘플 데이터 불러오기</button>
+            </div>
+        </div>
 
-        <div className="space-y-6 max-h-[400px] overflow-y-auto pr-4 mb-10">
+        <div className="space-y-6 max-h-[400px] overflow-y-auto pr-4 mb-10 border-y border-gray-100 py-6">
             {items.map((item, idx) => (
                 <div key={idx} className="flex gap-4 items-center bg-gray-50 p-6 rounded-3xl border border-gray-100 relative group">
                     <span className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-black text-gray-300 border-2 border-gray-100">{idx + 1}</span>

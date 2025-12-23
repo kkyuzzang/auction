@@ -9,7 +9,6 @@ const TeacherView: React.FC = () => {
   if (!room) return null;
 
   if (room.status === RoomStatus.FINISHED) {
-    // 승자 계산
     const sortedByScore = [...room.students].sort((a, b) => b.score - a.score);
     const sortedByCoins = [...room.students].sort((a, b) => b.coins - a.coins);
     const topScorer = sortedByScore[0];
@@ -63,58 +62,87 @@ const TeacherView: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-10 space-y-10">
-        <div className="bg-white rounded-[50px] shadow-2xl border-2 border-gray-100 p-12 text-center relative overflow-hidden">
-            {room.activeAuction ? (
-                <div className="space-y-8 animate-in fade-in zoom-in duration-300">
-                    <div className="text-[120px] font-black leading-none text-[#D4AF37] animate-pulse drop-shadow-2xl">
-                        {room.activeAuction.timeLeft}
-                    </div>
-                    <p className="text-5xl font-serif italic text-gray-800">"{room.activeAuction.text}"</p>
-                    <div className="flex justify-center gap-10">
-                        <div className="text-left">
-                            <span className="text-xs font-black text-gray-400 block mb-1">CURRENT BID</span>
-                            <p className="text-4xl font-black text-[#2D0A0A]">{room.activeAuction.highestBid?.amount.toLocaleString() || "1,000"}c</p>
-                            <span className="text-sm font-bold text-[#D4AF37]">{room.activeAuction.highestBid?.nickname || "입찰 대기"}</span>
+      <main className="max-w-[1400px] mx-auto p-10 grid grid-cols-1 lg:grid-cols-4 gap-10">
+        <div className="lg:col-span-3 space-y-10">
+            {/* 메인 경매 판넬 */}
+            <div className="bg-white rounded-[50px] shadow-2xl border-2 border-gray-100 p-12 text-center relative overflow-hidden">
+                {room.activeAuction ? (
+                    <div className="space-y-8 animate-in fade-in zoom-in duration-300">
+                        <div className="text-[120px] font-black leading-none text-[#D4AF37] animate-pulse drop-shadow-2xl">
+                            {room.activeAuction.timeLeft}
                         </div>
-                        <div className="h-16 w-[2px] bg-gray-100"></div>
-                        <div className="text-left">
-                            <span className="text-xs font-black text-gray-400 block mb-1">SELLER</span>
-                            <p className="text-4xl font-black text-gray-400">{room.activeAuction.sellerNickname}</p>
+                        <p className="text-5xl font-serif italic text-gray-800">"{room.activeAuction.text}"</p>
+                        <div className="flex justify-center gap-10">
+                            <div className="text-left">
+                                <span className="text-xs font-black text-gray-400 block mb-1">CURRENT BID</span>
+                                <p className="text-4xl font-black text-[#2D0A0A]">{room.activeAuction.highestBid?.amount.toLocaleString() || "1,000"}c</p>
+                                <span className="text-sm font-bold text-[#D4AF37]">{room.activeAuction.highestBid?.nickname || "입찰 대기"}</span>
+                            </div>
+                            <div className="h-16 w-[2px] bg-gray-100"></div>
+                            <div className="text-left">
+                                <span className="text-xs font-black text-gray-400 block mb-1">SELLER</span>
+                                <p className="text-4xl font-black text-gray-400">{room.activeAuction.sellerNickname}</p>
+                            </div>
+                        </div>
+                        <div className="flex justify-center gap-4 mt-10">
+                            <button onClick={addTime} className="bg-blue-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-105 transition">+ 1초 추가</button>
+                            <button onClick={closeAuction} className="bg-[#2D0A0A] text-[#D4AF37] px-8 py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition">🔨 즉시 마감</button>
                         </div>
                     </div>
-                    <div className="flex justify-center gap-4 mt-10">
-                        <button onClick={addTime} className="bg-blue-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-105 transition">+ 1초 추가</button>
-                        <button onClick={closeAuction} className="bg-[#2D0A0A] text-[#D4AF37] px-8 py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition">🔨 즉시 마감</button>
+                ) : (
+                    <div className="py-20">
+                        <div className="text-8xl mb-6">⚖️</div>
+                        <p className="text-2xl font-black text-gray-300 uppercase tracking-widest mb-4">현재 판매 순번</p>
+                        {currentSeller ? (
+                            <div className="bg-[#FFFDF5] inline-block px-10 py-5 rounded-[30px] border-4 border-[#D4AF37] shadow-xl">
+                                <p className="text-4xl font-black text-[#2D0A0A]">{currentSeller.nickname} 님</p>
+                                <p className="text-sm font-bold text-[#D4AF37] mt-1">경매에 올릴 문장을 선택하거나 패스해주세요.</p>
+                            </div>
+                        ) : (
+                            <p className="text-gray-400">참여 중인 학생이 없습니다.</p>
+                        )}
                     </div>
-                </div>
-            ) : (
-                <div className="py-20">
-                    <div className="text-8xl mb-6">⚖️</div>
-                    <p className="text-2xl font-black text-gray-300 uppercase tracking-widest mb-4">현재 판매 순번</p>
-                    {currentSeller ? (
-                        <div className="bg-[#FFFDF5] inline-block px-10 py-5 rounded-[30px] border-4 border-[#D4AF37] shadow-xl">
-                            <p className="text-4xl font-black text-[#2D0A0A]">{currentSeller.nickname} 님</p>
-                            <p className="text-sm font-bold text-[#D4AF37] mt-1">경매에 올릴 문장을 선택하거나 패스해주세요.</p>
+                )}
+            </div>
+
+            {/* 학생 리스트 및 통계 */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {room.students.map(s => (
+                    <div key={s.id} className={`p-6 rounded-[35px] border-2 transition-all ${currentSeller?.id === s.id ? 'bg-[#2D0A0A] border-[#D4AF37] shadow-2xl scale-105' : 'bg-white border-gray-100'}`}>
+                        <div className="flex justify-between items-start mb-4">
+                            <span className={`font-black text-lg ${currentSeller?.id === s.id ? 'text-[#D4AF37]' : 'text-gray-800'}`}>{s.nickname}</span>
                         </div>
-                    ) : (
-                        <p className="text-gray-400">참여 중인 학생이 없습니다.</p>
-                    )}
-                </div>
-            )}
+                        <div className={`text-xl font-black ${currentSeller?.id === s.id ? 'text-white' : 'text-[#D4AF37]'}`}>{s.coins.toLocaleString()}c</div>
+                        <div className="mt-4 flex flex-col gap-1">
+                            <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Inventory: {s.inventory.length}</span>
+                            <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Bids Made: {s.bidCount}회</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-6">
-            {room.students.map(s => (
-                <div key={s.id} className={`p-6 rounded-[35px] border-2 transition-all ${currentSeller?.id === s.id ? 'bg-[#2D0A0A] border-[#D4AF37] shadow-2xl scale-105' : 'bg-white border-gray-100'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                        <span className={`font-black text-xl ${currentSeller?.id === s.id ? 'text-[#D4AF37]' : 'text-gray-800'}`}>{s.nickname}</span>
-                        {currentSeller?.id === s.id && <span className="text-[10px] font-black bg-[#D4AF37] text-black px-2 py-1 rounded-lg animate-pulse">SELLER</span>}
-                    </div>
-                    <div className={`text-2xl font-black ${currentSeller?.id === s.id ? 'text-white' : 'text-[#D4AF37]'}`}>{s.coins.toLocaleString()}c</div>
-                    <div className="mt-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Inventory: {s.inventory.length} items</div>
-                </div>
-            ))}
+        {/* 사이드바: 판매 순번 전체 보기 */}
+        <div className="bg-white rounded-[40px] shadow-xl border-2 border-gray-100 p-8 flex flex-col">
+            <h3 className="text-xl font-black text-[#2D0A0A] mb-6 flex items-center gap-2">🔄 판매 대기열</h3>
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                {room.students.map((s, idx) => {
+                    const isActive = room.currentSellerIdx === idx;
+                    return (
+                        <div key={s.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition ${isActive ? 'bg-[#FFFDF5] border-[#D4AF37]' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${isActive ? 'bg-[#D4AF37] text-black' : 'bg-gray-200 text-gray-400'}`}>{idx + 1}</span>
+                            <div className="flex-1">
+                                <p className={`font-black text-sm ${isActive ? 'text-[#2D0A0A]' : 'text-gray-500'}`}>{s.nickname}</p>
+                                {isActive && <p className="text-[9px] font-bold text-[#D4AF37] uppercase animate-pulse">Now Selling</p>}
+                            </div>
+                            {isActive && <span className="text-xl">🛎️</span>}
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="mt-6 p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 leading-relaxed font-bold">
+                * 모든 학생이 한 번씩 돌아가며 판매자가 됩니다. 문장을 팔지 않고 넘길 수도 있습니다.
+            </div>
         </div>
       </main>
     </div>

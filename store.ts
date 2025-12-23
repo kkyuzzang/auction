@@ -46,21 +46,22 @@ export const useRoomStore = () => {
     };
   }, []);
 
-  // 타이머 핸들러 (선생님 사이드에서만 동작)
+  // 타이머 핸들러: 시간 추가 시에도 멈추지 않고 계속 작동하도록 개선
   useEffect(() => {
     const shouldRun = !studentConn && globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0;
     
     if (shouldRun) {
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
-        if (globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0) {
-          globalRoom.activeAuction.timeLeft -= 1;
-          if (globalRoom.activeAuction.timeLeft <= 0) {
+        if (globalRoom?.activeAuction) {
+          if (globalRoom.activeAuction.timeLeft > 0) {
+            globalRoom.activeAuction.timeLeft -= 1;
+            notify();
+          } else {
             clearInterval(timerInterval);
             timerInterval = null;
             closeAuction();
           }
-          notify();
         }
       }, 1000);
     } else {
@@ -112,7 +113,7 @@ export const useRoomStore = () => {
         if (!globalRoom.students.find(s => s.nickname === data.nickname)) {
           globalRoom.students.push({
             id: generateId(), nickname: data.nickname, coins: globalRoom.initialCoins,
-            inventory: [], worksheetAnswers: {}, score: 0
+            inventory: [], worksheetAnswers: {}, score: 0, bidCount: 0
           });
         }
         notify();
@@ -122,7 +123,8 @@ export const useRoomStore = () => {
           const currentMax = globalRoom.activeAuction.highestBid?.amount || 1000;
           if (data.amount >= currentMax) {
             globalRoom.activeAuction.highestBid = { studentId: data.studentId, nickname: student.nickname, amount: data.amount, timestamp: Date.now() };
-            globalRoom.activeAuction.timeLeft = 5; // 입찰 시 5초 리셋
+            globalRoom.activeAuction.timeLeft = 10; // 입찰 시 10초 리셋
+            student.bidCount += 1;
             notify();
           }
         }
@@ -132,7 +134,7 @@ export const useRoomStore = () => {
         if (student && item && !globalRoom.activeAuction) {
           globalRoom.activeAuction = { 
             instanceId: data.instanceId, sellerId: data.studentId, sellerNickname: student.nickname, 
-            text: item.text, concept: item.concept, highestBid: null, timeLeft: 5 
+            text: item.text, concept: item.concept, highestBid: null, timeLeft: 10 // 기본 10초
           };
           notify();
         }
@@ -146,9 +148,14 @@ export const useRoomStore = () => {
       case 'UPDATE_WORKSHEET':
         if (student) {
           if (data.slotIndex !== undefined && data.instanceId !== undefined) {
-             student.inventory.forEach(i => { if(i.assignedSlot === data.slotIndex) i.assignedSlot = null; });
-             const targetItem = student.inventory.find(i => i.id === data.instanceId);
-             if (targetItem) targetItem.assignedSlot = data.slotIndex;
+             // 기존 배정 해제 (slotIndex가 null인 경우만 instanceId 제거)
+             if (data.instanceId === null) {
+                student.inventory.forEach(i => { if(i.assignedSlot === data.slotIndex) i.assignedSlot = null; });
+             } else {
+                student.inventory.forEach(i => { if(i.assignedSlot === data.slotIndex) i.assignedSlot = null; });
+                const targetItem = student.inventory.find(i => i.id === data.instanceId);
+                if (targetItem) targetItem.assignedSlot = data.slotIndex;
+             }
           }
           if (data.slotIndex !== undefined && data.answer !== undefined) {
              student.worksheetAnswers[data.slotIndex] = data.answer;
@@ -173,7 +180,7 @@ export const useRoomStore = () => {
     const templates = globalRoom.templates;
     const numStudents = globalRoom.students.length;
     
-    // 1. 모든 문장을 학생 수만큼 복제하여 거대 풀 생성
+    // 참여 학생 수만큼 문장 세트 복제
     let allInstances: SentenceInstance[] = [];
     templates.forEach((temp, tempIdx) => {
       for (let i = 0; i < numStudents; i++) {
@@ -189,14 +196,13 @@ export const useRoomStore = () => {
       }
     });
 
-    // 2. 풀을 섞기
     allInstances = shuffleArray(allInstances);
 
-    // 3. 학생들에게 동일한 개수(템플릿 개수만큼) 배분
     globalRoom.students.forEach((student, sIdx) => {
       student.inventory = [];
       student.worksheetAnswers = {};
       student.coins = globalRoom!.initialCoins;
+      student.bidCount = 0;
       
       const startIdx = sIdx * templates.length;
       const myItems = allInstances.slice(startIdx, startIdx + templates.length);

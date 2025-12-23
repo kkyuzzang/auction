@@ -40,7 +40,7 @@ export interface ActiveAuction {
   text: string;
   concept: string;
   highestBid: Bid | null;
-  timeLeft: number; // 5초 카운트다운
+  timeLeft: number; 
 }
 
 export interface Student {
@@ -50,6 +50,7 @@ export interface Student {
   inventory: SentenceInstance[];
   worksheetAnswers: { [key: number]: string };
   score: number;
+  bidCount: number; // 입찰 참여 횟수 추가
 }
 
 export interface Room {
@@ -62,5 +63,5 @@ export interface Room {
   students: Student[];
   activeAuction: ActiveAuction | null;
   initialCoins: number;
-  currentSellerIdx: number; // 현재 판매 차례인 학생 인덱스
+  currentSellerIdx: number; 
 }
