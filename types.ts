@@ -50,7 +50,8 @@ export interface Student {
   inventory: SentenceInstance[];
   worksheetAnswers: { [key: number]: string };
   score: number;
-  bidCount: number; // 입찰 참여 횟수 추가
+  bidCount: number; 
+  saleCount: number; // 판매 성공 횟수 추가
 }
 
 export interface Room {

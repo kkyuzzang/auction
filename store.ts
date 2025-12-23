@@ -46,7 +46,6 @@ export const useRoomStore = () => {
     };
   }, []);
 
-  // 타이머 핸들러: 시간 추가 시에도 멈추지 않고 계속 작동하도록 개선
   useEffect(() => {
     const shouldRun = !studentConn && globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0;
     
@@ -70,9 +69,7 @@ export const useRoomStore = () => {
         timerInterval = null;
       }
     }
-    return () => {
-      if (timerInterval) clearInterval(timerInterval);
-    };
+    return () => { if (timerInterval) clearInterval(timerInterval); };
   }, [globalRoom?.activeAuction?.timeLeft, !!studentConn]);
 
   const createRoom = useCallback((teacherId: string, customCode: string) => {
@@ -113,7 +110,7 @@ export const useRoomStore = () => {
         if (!globalRoom.students.find(s => s.nickname === data.nickname)) {
           globalRoom.students.push({
             id: generateId(), nickname: data.nickname, coins: globalRoom.initialCoins,
-            inventory: [], worksheetAnswers: {}, score: 0, bidCount: 0
+            inventory: [], worksheetAnswers: {}, score: 0, bidCount: 0, saleCount: 0
           });
         }
         notify();
@@ -123,7 +120,7 @@ export const useRoomStore = () => {
           const currentMax = globalRoom.activeAuction.highestBid?.amount || 1000;
           if (data.amount >= currentMax) {
             globalRoom.activeAuction.highestBid = { studentId: data.studentId, nickname: student.nickname, amount: data.amount, timestamp: Date.now() };
-            globalRoom.activeAuction.timeLeft = 10; // 입찰 시 10초 리셋
+            globalRoom.activeAuction.timeLeft = 10; 
             student.bidCount += 1;
             notify();
           }
@@ -134,7 +131,7 @@ export const useRoomStore = () => {
         if (student && item && !globalRoom.activeAuction) {
           globalRoom.activeAuction = { 
             instanceId: data.instanceId, sellerId: data.studentId, sellerNickname: student.nickname, 
-            text: item.text, concept: item.concept, highestBid: null, timeLeft: 10 // 기본 10초
+            text: item.text, concept: item.concept, highestBid: null, timeLeft: 10 
           };
           notify();
         }
@@ -148,7 +145,6 @@ export const useRoomStore = () => {
       case 'UPDATE_WORKSHEET':
         if (student) {
           if (data.slotIndex !== undefined && data.instanceId !== undefined) {
-             // 기존 배정 해제 (slotIndex가 null인 경우만 instanceId 제거)
              if (data.instanceId === null) {
                 student.inventory.forEach(i => { if(i.assignedSlot === data.slotIndex) i.assignedSlot = null; });
              } else {
@@ -180,18 +176,12 @@ export const useRoomStore = () => {
     const templates = globalRoom.templates;
     const numStudents = globalRoom.students.length;
     
-    // 참여 학생 수만큼 문장 세트 복제
     let allInstances: SentenceInstance[] = [];
     templates.forEach((temp, tempIdx) => {
       for (let i = 0; i < numStudents; i++) {
         allInstances.push({
-          id: generateId(),
-          text: temp.text,
-          concept: temp.concept,
-          ownerId: null,
-          ownerNickname: null,
-          orderIndex: tempIdx,
-          assignedSlot: null
+          id: generateId(), text: temp.text, concept: temp.concept, 
+          ownerId: null, ownerNickname: null, orderIndex: tempIdx, assignedSlot: null
         });
       }
     });
@@ -203,6 +193,7 @@ export const useRoomStore = () => {
       student.worksheetAnswers = {};
       student.coins = globalRoom!.initialCoins;
       student.bidCount = 0;
+      student.saleCount = 0;
       
       const startIdx = sIdx * templates.length;
       const myItems = allInstances.slice(startIdx, startIdx + templates.length);
@@ -235,6 +226,7 @@ export const useRoomStore = () => {
           buyer.inventory.push(item);
           buyer.coins -= highestBid.amount;
           seller.coins += highestBid.amount;
+          seller.saleCount += 1; // 판매 성공 기록
         }
       }
     }
@@ -250,18 +242,30 @@ export const useRoomStore = () => {
     }
   }, []);
 
+  const sendCoins = useCallback((studentId: string, amount: number) => {
+    if (!globalRoom) return;
+    const student = globalRoom.students.find(s => s.id === studentId);
+    if (student) {
+        student.coins += amount;
+        notify();
+    }
+  }, []);
+
   const finishRoom = useCallback(() => {
     if (!globalRoom) return;
     globalRoom.students.forEach(student => {
-        let score = student.inventory.length * 10;
+        let correctCount = 0;
         globalRoom!.templates.forEach((temp, idx) => {
             const answer = student.worksheetAnswers[idx];
             const assigned = student.inventory.find(i => i.assignedSlot === idx);
-            if (assigned && assigned.text === temp.text && answer === temp.concept) {
-                score += 50;
+            if (globalRoom!.mode === RoomMode.MEMO) {
+              if (assigned && assigned.text === temp.text && answer === temp.concept) correctCount++;
+            } else {
+              if (assigned && assigned.text === temp.text) correctCount++;
             }
         });
-        student.score = score;
+        // 점수 공식: 인벤토리*10 + 정답*50 + 입찰*5
+        student.score = (student.inventory.length * 10) + (correctCount * 50) + (student.bidCount * 5);
     });
     globalRoom.status = RoomStatus.FINISHED;
     notify();
@@ -303,6 +307,6 @@ export const useRoomStore = () => {
 
   return { 
     room: globalRoom, isPeerReady, createRoom, finalizeSetup, joinRoom, startGame, 
-    startAuction, placeBid, closeAuction, addTime, skipTurn, updateWorksheet, finishRoom, resetStore: () => window.location.reload() 
+    startAuction, placeBid, closeAuction, addTime, skipTurn, updateWorksheet, finishRoom, sendCoins, resetStore: () => window.location.reload() 
   };
 };

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useRoomStore } from '../store.ts';
 import { RoomMode, SentenceTemplate } from '../types.ts';
 import FileImport from './FileImport.tsx';
+import { downloadCSV } from '../utils.ts';
 
 const TeacherSetupView: React.FC = () => {
   const { room, finalizeSetup } = useRoomStore();
@@ -32,18 +33,30 @@ const TeacherSetupView: React.FC = () => {
   const loadSampleData = () => {
     if (roomMode === RoomMode.MEMO) {
         setItems([
-            { text: "Earth rotates on its axis once every 24 hours.", concept: "Rotation" },
-            { text: "Earth travels around the Sun once every 365 days.", concept: "Revolution" },
-            { text: "The moon orbits the Earth once every 27.3 days.", concept: "Lunar Orbit" }
+            { text: "지구는 24시간마다 한 번씩 제자리에서 돕니다.", concept: "자전" },
+            { text: "지구는 태양 주위를 1년에 한 번씩 돕니다.", concept: "공전" },
+            { text: "달은 지구 주위를 약 27.3일마다 한 번씩 돕니다.", concept: "달의 공전" }
         ]);
     } else {
         setItems([
-            { text: "First, prepare all the ingredients.", concept: "1" },
-            { text: "Second, heat the pan with some oil.", concept: "2" },
-            { text: "Third, sauté the onions and garlic.", concept: "3" },
-            { text: "Finally, serve and enjoy your meal.", concept: "4" }
+            { text: "먼저, 신선한 재료를 깨끗하게 씻어 준비합니다.", concept: "1" },
+            { text: "팬에 기름을 두르고 중불에서 예열합니다.", concept: "2" },
+            { text: "준비한 재료를 넣고 골고루 볶아줍니다.", concept: "3" },
+            { text: "마지막으로 접시에 담아 맛있게 먹습니다.", concept: "4" }
         ]);
     }
+  };
+
+  const downloadSampleExcel = () => {
+    const data = roomMode === RoomMode.MEMO ? [
+        { "문장": "꽃이 피는 계절은 언제인가요?", "정답(개념)": "봄" },
+        { "문장": "지구에서 가장 가까운 항성은?", "정답(개념)": "태양" }
+    ] : [
+        { "문장": "뿌리가 내립니다.", "정답(순서)": "1" },
+        { "문장": "줄기가 자랍니다.", "정답(순서)": "2" },
+        { "문장": "꽃이 핍니다.", "정답(순서)": "3" }
+    ];
+    downloadCSV(`sample_${roomMode}.csv`, data);
   };
 
   const handleStart = () => {
@@ -62,11 +75,15 @@ const TeacherSetupView: React.FC = () => {
             <button onClick={() => { setRoomMode(RoomMode.ORDER); setItems([{text:'', concept:'1'}]); }} className={`px-6 py-3 rounded-2xl font-black transition ${roomMode === RoomMode.ORDER ? 'bg-[#2D0A0A] text-[#D4AF37]' : 'bg-gray-100 text-gray-400'}`}>🔢 순서 나열</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-10">
+        <div className="grid grid-cols-3 gap-4 mb-10">
             <FileImport onImport={handleImport} />
             <div className="flex flex-col gap-3">
                 <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">빠른 시작</label>
-                <button onClick={loadSampleData} className="w-full py-3 bg-gray-100 rounded-3xl font-black text-gray-500 hover:bg-gray-200 transition">💡 샘플 데이터 불러오기</button>
+                <button onClick={loadSampleData} className="w-full py-3 bg-blue-50 text-blue-600 rounded-3xl font-black text-xs hover:bg-blue-100 transition">💡 한글 샘플 로드</button>
+            </div>
+            <div className="flex flex-col gap-3">
+                <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">양식 다운로드</label>
+                <button onClick={downloadSampleExcel} className="w-full py-3 bg-green-50 text-green-600 rounded-3xl font-black text-xs hover:bg-green-100 transition">📥 엑셀 양식 받기</button>
             </div>
         </div>
 

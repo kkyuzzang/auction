@@ -45,18 +45,35 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
         <div className="min-h-screen bg-[#FFFDF5] p-6 pb-20 overflow-y-auto">
             <div className="max-w-4xl mx-auto space-y-10">
                 <div className="text-center space-y-4 py-10">
-                    <h2 className="text-4xl font-black text-[#2D0A0A]">최종 학습 결과 리포트</h2>
+                    <h2 className="text-4xl font-black text-[#2D0A0A]">최종 학습 리포트</h2>
                     <div className="inline-block bg-[#2D0A0A] text-[#D4AF37] px-8 py-3 rounded-full font-black text-2xl shadow-xl">
-                        나의 최종 점수: {student.score} PTS
+                        최종 점수: {student.score} PTS
                     </div>
                 </div>
 
+                <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm text-center">
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">점수 계산 수식</p>
+                    <p className="text-xl font-black text-[#2D0A0A]">
+                        ({student.inventory.length} × 10) + ({room.templates.filter((t, idx) => {
+                            const ans = student.worksheetAnswers[idx];
+                            const ass = student.inventory.find(i => i.assignedSlot === idx);
+                            if (room.mode === RoomMode.MEMO) return ass && ass.text === t.text && ans === t.concept;
+                            return ass && ass.text === t.text;
+                        }).length} × 50) + ({student.bidCount} × 5) = {student.score}
+                    </p>
+                </div>
+
                 <div className="space-y-6">
-                    <h3 className="text-2xl font-black text-gray-800">📊 나의 워크시트 채점 결과</h3>
+                    <h3 className="text-2xl font-black text-gray-800">📊 나의 채점 결과</h3>
                     {room.templates.map((temp, idx) => {
                         const assigned = student.inventory.find(i => i.assignedSlot === idx);
                         const myAnswer = student.worksheetAnswers[idx] || "";
-                        const isCorrect = assigned && assigned.text === temp.text && myAnswer === temp.concept;
+                        let isCorrect = false;
+                        if (room.mode === RoomMode.MEMO) {
+                            isCorrect = assigned && assigned.text === temp.text && myAnswer === temp.concept;
+                        } else {
+                            isCorrect = assigned && assigned.text === temp.text;
+                        }
                         
                         return (
                             <div key={idx} className={`bg-white p-8 rounded-[40px] border-4 shadow-lg ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
@@ -65,26 +82,23 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                                     <span className={`text-4xl font-black ${isCorrect ? 'text-green-500' : 'text-red-500'}`}>{isCorrect ? 'O' : 'X'}</span>
                                 </div>
                                 <div className="space-y-4">
-                                    <p className="text-xl font-serif italic text-gray-800">"{assigned?.text || "(문장 미배정)"}"</p>
+                                    <p className="text-xl font-serif italic text-gray-800">"{assigned?.text || "(미배치)"}"</p>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 bg-gray-50 rounded-2xl">
-                                            <p className="text-[10px] font-black text-gray-400 mb-1">나의 답안</p>
-                                            <p className="font-bold text-[#2D0A0A]">{myAnswer || "(비어있음)"}</p>
+                                            <p className="text-[10px] font-black text-gray-400 mb-1">나의 입력</p>
+                                            <p className="font-bold text-[#2D0A0A]">{room.mode === RoomMode.ORDER ? (assigned ? "배치 완료" : "-") : (myAnswer || "-")}</p>
                                         </div>
                                         <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100">
-                                            <p className="text-[10px] font-black text-yellow-600 mb-1">정답(개념/순서)</p>
+                                            <p className="text-[10px] font-black text-yellow-600 mb-1">정답({room.mode === RoomMode.ORDER ? "순서" : "개념"})</p>
                                             <p className="font-bold text-yellow-700">{temp.concept}</p>
                                         </div>
                                     </div>
-                                    {!isCorrect && (
-                                        <p className="text-xs text-red-400 font-bold">* 문장 배치와 개념 매칭이 모두 정확해야 정답 처리됩니다.</p>
-                                    )}
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-                <button onClick={() => window.location.reload()} className="w-full bg-[#2D0A0A] text-[#D4AF37] font-black py-5 rounded-3xl text-xl shadow-2xl">메인으로 돌아가기</button>
+                <button onClick={() => window.location.reload()} className="w-full bg-[#2D0A0A] text-[#D4AF37] font-black py-5 rounded-3xl text-xl shadow-2xl">메인으로</button>
             </div>
         </div>
     );
@@ -131,30 +145,37 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                 <p className="text-3xl font-serif italic text-white mb-10 leading-relaxed px-10">"{activeAuction.text}"</p>
                 
                 {activeAuction.sellerId !== studentId && (
-                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/10 max-w-sm mx-auto">
+                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/10 max-w-md mx-auto">
                         <div className="flex justify-between items-end mb-6">
                             <div className="text-left">
                                 <span className="text-[9px] font-black text-[#D4AF37] uppercase block mb-1">Max Bid</span>
                                 <p className="text-3xl font-black text-white">{activeAuction.highestBid?.amount.toLocaleString() || "1,000"}</p>
                             </div>
-                            <span className="text-xs font-bold text-gray-500">{activeAuction.highestBid?.nickname || "-"}</span>
+                            <span className="text-xs font-bold text-gray-500">{activeAuction.highestBid?.nickname || "입찰 대기"}</span>
                         </div>
-                        <div className="flex items-center gap-3 bg-white rounded-3xl p-1 pr-4 shadow-lg">
-                            <button onClick={() => setBidAmount(a => Math.max(0, a - 1000))} className="w-12 h-12 bg-gray-100 rounded-2xl font-black text-xl">-</button>
-                            <input 
-                                type="number" 
-                                className="flex-1 bg-transparent text-center font-black text-2xl outline-none"
-                                placeholder="금액"
-                                value={bidAmount || ''}
-                                onChange={(e) => setBidAmount(Number(e.target.value))}
-                            />
-                            <button onClick={() => setBidAmount(a => a + 1000)} className="w-12 h-12 bg-gray-100 rounded-2xl font-black text-xl">+</button>
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-1 items-center bg-white rounded-3xl p-1 shadow-lg border-2 border-gray-100 overflow-hidden">
+                                <button 
+                                  onClick={() => setBidAmount(a => Math.max(0, a - 1000))} 
+                                  className="w-14 h-14 bg-gray-50 text-gray-400 font-black text-2xl hover:bg-gray-100 transition"
+                                >-</button>
+                                <input 
+                                    type="number" 
+                                    className="flex-1 bg-transparent text-center font-black text-2xl outline-none"
+                                    value={bidAmount || ''}
+                                    onChange={(e) => setBidAmount(Number(e.target.value))}
+                                />
+                                <button 
+                                  onClick={() => setBidAmount(a => a + 1000)} 
+                                  className="w-14 h-14 bg-gray-50 text-gray-400 font-black text-2xl hover:bg-gray-100 transition"
+                                >+</button>
+                            </div>
                             <button 
                                 onClick={() => placeBid(studentId, bidAmount)}
-                                className="bg-[#D4AF37] text-black px-6 py-3 rounded-2xl font-black shadow-lg disabled:opacity-50 ml-2"
+                                className="bg-[#D4AF37] text-black h-16 px-10 rounded-3xl font-black shadow-xl disabled:opacity-50 active:scale-95 transition"
                                 disabled={bidAmount <= (activeAuction.highestBid?.amount || 1000) || bidAmount > student.coins}
                             >
-                                입찰
+                                입찰하기
                             </button>
                         </div>
                     </div>
@@ -170,9 +191,8 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                         <button onClick={() => skipTurn(studentId)} className="bg-gray-100 text-gray-400 px-10 py-4 rounded-3xl font-black hover:bg-red-50 hover:text-red-500 transition">입찰 포기 (Pass)</button>
                     </div>
                 ) : (
-                    <div className="py-10 opacity-30 grayscale">
-                        <div className="text-6xl mb-6">⏳</div>
-                        <p className="text-xl font-black uppercase tracking-widest">다음 경매를 기다리는 중...</p>
+                    <div className="py-10 opacity-30 grayscale text-center">
+                        <p className="text-xl font-black uppercase tracking-widest">다음 경매 대기 중...</p>
                     </div>
                 )}
             </div>
@@ -180,7 +200,7 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
 
         {/* 내 문장 창고 */}
         <div className="space-y-6">
-            <h3 className="text-2xl font-black text-gray-800 flex items-center gap-3">📦 내 문장 창고 ({student.inventory.length})</h3>
+            <h3 className="text-2xl font-black text-gray-800">📦 내 문장 창고 ({student.inventory.length})</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {student.inventory.map(item => (
                     <div 
@@ -195,27 +215,14 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                             )}
                         </div>
                         <p className="text-xl font-serif italic text-gray-800 mb-4 leading-relaxed">"{item.text}"</p>
-                        {item.assignedSlot !== null ? (
-                          <p className="text-[10px] font-black text-green-600 uppercase">학습지 {item.assignedSlot + 1}번에 사용 중</p>
-                        ) : (
-                          <p className="text-[10px] font-black text-blue-500 animate-pulse">클릭하여 학습지에 배치</p>
-                        )}
                     </div>
                 ))}
             </div>
         </div>
 
-        {/* 모드별 학습지 */}
+        {/* 디지털 학습지 */}
         <div className="mt-16 space-y-8">
-            <div className="flex items-baseline gap-3">
-                <h3 className="text-2xl font-black text-gray-800">📝 나의 디지털 학습지</h3>
-                <span className="text-xs font-bold text-[#D4AF37] uppercase">{room.mode === RoomMode.MEMO ? 'Concept Matching' : 'Sequence Ordering'}</span>
-            </div>
-            {selectedItemToAssign && (
-              <div className="bg-blue-600 text-white p-4 rounded-2xl font-black text-center animate-bounce shadow-xl">
-                문장이 선택되었습니다! 아래 슬롯 중 하나를 눌러 배치하세요.
-              </div>
-            )}
+            <h3 className="text-2xl font-black text-gray-800">📝 나의 디지털 학습지</h3>
             <div className="space-y-4">
                 {room.templates.map((_, idx) => {
                     const assigned = student.inventory.find(i => i.assignedSlot === idx);
@@ -248,9 +255,6 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                                       placeholder="개념/정답 입력"
                                       onChange={(val) => updateWorksheet(studentId, idx, { answer: val })}
                                     />
-                                )}
-                                {room.mode === RoomMode.ORDER && (
-                                    <div className="bg-[#2D0A0A] text-[#D4AF37] px-4 py-2 rounded-xl font-black text-sm">순번: {idx + 1}</div>
                                 )}
                             </div>
                         </div>
