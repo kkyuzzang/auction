@@ -25,6 +25,14 @@ const notify = () => {
   }
 };
 
+const shuffleArray = (array: any[]) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+};
+
 export const useRoomStore = () => {
   const [, setTick] = useState(0);
   const [isPeerReady, setIsPeerReady] = useState(false);
@@ -40,30 +48,31 @@ export const useRoomStore = () => {
 
   // 타이머 핸들러 (선생님 사이드에서만 동작)
   useEffect(() => {
-    if (!studentConn && globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0) {
-      if (!timerInterval) {
-        timerInterval = setInterval(() => {
-          if (globalRoom?.activeAuction) {
-            globalRoom.activeAuction.timeLeft -= 1;
-            if (globalRoom.activeAuction.timeLeft <= 0) {
-              clearInterval(timerInterval);
-              timerInterval = null;
-              // 시간 종료 시 자동 낙찰 처리는 교사가 '마감' 누르는 것으로 유도하거나 자동 처리 가능
-              // 여기서는 자동 낙찰 처리
-              closeAuction();
-            }
-            notify();
+    const shouldRun = !studentConn && globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0;
+    
+    if (shouldRun) {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0) {
+          globalRoom.activeAuction.timeLeft -= 1;
+          if (globalRoom.activeAuction.timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            closeAuction();
           }
-        }, 1000);
-      }
+          notify();
+        }
+      }, 1000);
     } else {
       if (timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
       }
     }
-    return () => clearInterval(timerInterval);
-  }, [globalRoom?.activeAuction?.timeLeft]);
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+    };
+  }, [globalRoom?.activeAuction?.timeLeft, !!studentConn]);
 
   const createRoom = useCallback((teacherId: string, customCode: string) => {
     const code = customCode.toUpperCase().trim();
@@ -162,21 +171,43 @@ export const useRoomStore = () => {
   const startGame = useCallback(() => {
     if (!globalRoom || globalRoom.students.length === 0) return;
     const templates = globalRoom.templates;
-    globalRoom.students.forEach(student => {
-      student.inventory = [];
-      student.worksheetAnswers = {};
-      student.coins = globalRoom!.initialCoins;
-      // 초기 2개 랜덤 지급
-      for (let i = 0; i < 2; i++) {
-        const randomIdx = Math.floor(Math.random() * templates.length);
-        const template = templates[randomIdx];
-        student.inventory.push({ 
-            id: generateId(), text: template.text, concept: template.concept, 
-            ownerId: student.id, ownerNickname: student.nickname, orderIndex: randomIdx, 
-            assignedSlot: null 
+    const numStudents = globalRoom.students.length;
+    
+    // 1. 모든 문장을 학생 수만큼 복제하여 거대 풀 생성
+    let allInstances: SentenceInstance[] = [];
+    templates.forEach((temp, tempIdx) => {
+      for (let i = 0; i < numStudents; i++) {
+        allInstances.push({
+          id: generateId(),
+          text: temp.text,
+          concept: temp.concept,
+          ownerId: null,
+          ownerNickname: null,
+          orderIndex: tempIdx,
+          assignedSlot: null
         });
       }
     });
+
+    // 2. 풀을 섞기
+    allInstances = shuffleArray(allInstances);
+
+    // 3. 학생들에게 동일한 개수(템플릿 개수만큼) 배분
+    globalRoom.students.forEach((student, sIdx) => {
+      student.inventory = [];
+      student.worksheetAnswers = {};
+      student.coins = globalRoom!.initialCoins;
+      
+      const startIdx = sIdx * templates.length;
+      const myItems = allInstances.slice(startIdx, startIdx + templates.length);
+      
+      myItems.forEach(item => {
+        item.ownerId = student.id;
+        item.ownerNickname = student.nickname;
+      });
+      student.inventory = myItems;
+    });
+
     globalRoom.status = RoomStatus.MARKET;
     globalRoom.currentSellerIdx = 0;
     notify();
@@ -215,14 +246,13 @@ export const useRoomStore = () => {
 
   const finishRoom = useCallback(() => {
     if (!globalRoom) return;
-    // 점수 계산
     globalRoom.students.forEach(student => {
-        let score = student.inventory.length * 10; // 문장당 10점
+        let score = student.inventory.length * 10;
         globalRoom!.templates.forEach((temp, idx) => {
             const answer = student.worksheetAnswers[idx];
             const assigned = student.inventory.find(i => i.assignedSlot === idx);
             if (assigned && assigned.text === temp.text && answer === temp.concept) {
-                score += 50; // 정답 매칭 성공 시 50점
+                score += 50;
             }
         });
         student.score = score;

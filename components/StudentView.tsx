@@ -1,12 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoomStore } from '../store.ts';
-import { RoomStatus, RoomMode } from '../types.ts';
+import { RoomStatus, RoomMode, SentenceInstance } from '../types.ts';
+
+const WorksheetSlotInput = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder: string }) => {
+  const [localValue, setLocalValue] = useState(value);
+  
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  return (
+    <input 
+      placeholder={placeholder}
+      className="bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-2 text-sm font-bold w-full md:w-40 outline-none focus:border-[#D4AF37]"
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={() => onChange(localValue)}
+    />
+  );
+};
 
 const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
   const { room, placeBid, startAuction, skipTurn, updateWorksheet } = useRoomStore();
   const [bidAmount, setBidAmount] = useState<number>(0);
-  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [selectedItemToAssign, setSelectedItemToAssign] = useState<SentenceInstance | null>(null);
 
   if (!room) return null;
   const student = room.students.find(s => s.id === studentId);
@@ -28,7 +46,6 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
 
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-[#1A1A1A] pb-40">
-      {/* 상단바 */}
       <div className="sticky top-0 z-50 bg-white shadow-xl p-6 border-b-2 border-gray-100 flex justify-between items-center">
         <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-[#2D0A0A] rounded-2xl flex items-center justify-center text-[#D4AF37] font-black shadow-lg">{student.nickname[0]}</div>
@@ -107,18 +124,23 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
             <h3 className="text-2xl font-black text-gray-800 flex items-center gap-3">📦 내 문장 창고 ({student.inventory.length})</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {student.inventory.map(item => (
-                    <div key={item.id} className={`bg-white rounded-[40px] shadow-lg border-2 p-8 transition-all ${item.assignedSlot !== null ? 'opacity-40 grayscale-0 border-green-500' : 'border-gray-100'}`}>
+                    <div 
+                      key={item.id} 
+                      className={`bg-white rounded-[40px] shadow-lg border-2 p-8 transition-all ${item.assignedSlot !== null ? 'opacity-40 border-green-500' : (selectedItemToAssign?.id === item.id ? 'border-blue-500 ring-8 ring-blue-50 scale-105' : 'border-gray-100 hover:border-blue-200 cursor-pointer')}`}
+                      onClick={() => item.assignedSlot === null && setSelectedItemToAssign(selectedItemToAssign?.id === item.id ? null : item)}
+                    >
                         <div className="flex justify-between items-start mb-4">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asset</span>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{selectedItemToAssign?.id === item.id ? "선택됨 🎯" : "Asset"}</span>
                             {!activeAuction && isMyTurn && item.assignedSlot === null && (
-                                <button onClick={() => startAuction(studentId, item.id)} className="bg-[#2D0A0A] text-[#D4AF37] px-4 py-1.5 rounded-full text-[10px] font-black">이 매물 올리기</button>
-                            )}
-                            {selectedSlot !== null && item.assignedSlot === null && (
-                                <button onClick={() => { updateWorksheet(studentId, selectedSlot, { instanceId: item.id }); setSelectedSlot(null); }} className="bg-blue-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg">슬롯에 배정</button>
+                                <button onClick={(e) => { e.stopPropagation(); startAuction(studentId, item.id); }} className="bg-[#2D0A0A] text-[#D4AF37] px-4 py-1.5 rounded-full text-[10px] font-black">이 매물 올리기</button>
                             )}
                         </div>
                         <p className="text-xl font-serif italic text-gray-800 mb-4 leading-relaxed">"{item.text}"</p>
-                        {item.assignedSlot !== null && <p className="text-[10px] font-black text-green-600 uppercase">학습지 {item.assignedSlot + 1}번에 사용 중</p>}
+                        {item.assignedSlot !== null ? (
+                          <p className="text-[10px] font-black text-green-600 uppercase">학습지 {item.assignedSlot + 1}번에 사용 중</p>
+                        ) : (
+                          <p className="text-[10px] font-black text-blue-500 animate-pulse">클릭하여 학습지에 배치</p>
+                        )}
                     </div>
                 ))}
             </div>
@@ -130,28 +152,42 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                 <h3 className="text-2xl font-black text-gray-800">📝 나의 디지털 학습지</h3>
                 <span className="text-xs font-bold text-[#D4AF37] uppercase">{room.mode === RoomMode.MEMO ? 'Concept Matching' : 'Sequence Ordering'}</span>
             </div>
+            {selectedItemToAssign && (
+              <div className="bg-blue-600 text-white p-4 rounded-2xl font-black text-center animate-bounce shadow-xl">
+                나침반이 선택되었습니다! 아래 슬롯 중 하나를 눌러 배치하세요.
+              </div>
+            )}
             <div className="space-y-4">
                 {room.templates.map((_, idx) => {
                     const assigned = student.inventory.find(i => i.assignedSlot === idx);
                     return (
-                        <div key={idx} className={`bg-white p-6 rounded-[35px] shadow-md border-2 transition-all ${selectedSlot === idx ? 'border-blue-500 ring-8 ring-blue-50' : 'border-gray-50'}`}>
+                        <div 
+                          key={idx} 
+                          className={`bg-white p-6 rounded-[35px] shadow-md border-2 transition-all ${selectedItemToAssign ? 'border-blue-300 hover:border-blue-600 cursor-pointer scale-[1.01]' : 'border-gray-50'}`}
+                          onClick={() => {
+                            if (selectedItemToAssign) {
+                              updateWorksheet(studentId, idx, { instanceId: selectedItemToAssign.id });
+                              setSelectedItemToAssign(null);
+                            }
+                          }}
+                        >
                             <div className="flex flex-col md:flex-row gap-6 items-center">
                                 <span className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-black text-gray-400 text-sm">{idx + 1}</span>
-                                <button 
-                                    onClick={() => setSelectedSlot(selectedSlot === idx ? null : idx)}
-                                    className={`px-6 py-2 rounded-2xl text-[10px] font-black uppercase transition ${assigned ? 'bg-green-100 text-green-700' : 'bg-blue-600 text-white'}`}
-                                >
-                                    {assigned ? '배정됨' : '문장 선택'}
-                                </button>
                                 <div className="flex-1 text-center md:text-left">
-                                    {assigned ? <p className="text-lg font-serif italic">"{assigned.text}"</p> : <p className="text-gray-300 font-bold italic">문장을 배치하세요</p>}
+                                    {assigned ? (
+                                      <div className="flex items-center gap-4">
+                                        <p className="text-lg font-serif italic flex-1">"{assigned.text}"</p>
+                                        <button onClick={(e) => { e.stopPropagation(); updateWorksheet(studentId, idx, { instanceId: null }); }} className="text-[10px] text-red-400 font-bold hover:text-red-600">제거</button>
+                                      </div>
+                                    ) : (
+                                      <p className="text-gray-300 font-bold italic">{selectedItemToAssign ? "여기에 배치하기" : "문장을 선택하여 배치하세요"}</p>
+                                    )}
                                 </div>
                                 {room.mode === RoomMode.MEMO && (
-                                    <input 
-                                        placeholder="개념/정답 입력"
-                                        className="bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-2 text-sm font-bold w-full md:w-40 outline-none focus:border-[#D4AF37]"
-                                        value={student.worksheetAnswers[idx] || ''}
-                                        onChange={(e) => updateWorksheet(studentId, idx, { answer: e.target.value })}
+                                    <WorksheetSlotInput 
+                                      value={student.worksheetAnswers[idx] || ''}
+                                      placeholder="개념/정답 입력"
+                                      onChange={(val) => updateWorksheet(studentId, idx, { answer: val })}
                                     />
                                 )}
                                 {room.mode === RoomMode.ORDER && (
