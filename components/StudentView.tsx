@@ -157,22 +157,22 @@ const StudentView: React.FC<{ studentId: string }> = ({ studentId }) => {
                             <div className="flex flex-1 items-center bg-white rounded-3xl p-1 shadow-lg border-2 border-gray-100 overflow-hidden">
                                 <button 
                                   onClick={() => setBidAmount(a => Math.max(0, a - 1000))} 
-                                  className="w-14 h-14 bg-gray-50 text-gray-400 font-black text-2xl hover:bg-gray-100 transition"
+                                  className="w-16 h-14 bg-gray-50 text-gray-600 font-black text-3xl hover:bg-gray-200 transition flex items-center justify-center shrink-0"
                                 >-</button>
                                 <input 
                                     type="number" 
-                                    className="flex-1 bg-transparent text-center font-black text-2xl outline-none"
+                                    className="flex-1 bg-transparent text-center font-black text-2xl outline-none min-w-0"
                                     value={bidAmount || ''}
                                     onChange={(e) => setBidAmount(Number(e.target.value))}
                                 />
                                 <button 
                                   onClick={() => setBidAmount(a => a + 1000)} 
-                                  className="w-14 h-14 bg-gray-50 text-gray-400 font-black text-2xl hover:bg-gray-100 transition"
+                                  className="w-16 h-14 bg-gray-50 text-gray-600 font-black text-3xl hover:bg-gray-200 transition flex items-center justify-center shrink-0"
                                 >+</button>
                             </div>
                             <button 
                                 onClick={() => placeBid(studentId, bidAmount)}
-                                className="bg-[#D4AF37] text-black h-16 px-10 rounded-3xl font-black shadow-xl disabled:opacity-50 active:scale-95 transition"
+                                className="bg-[#D4AF37] text-black h-16 px-10 rounded-3xl font-black shadow-xl disabled:opacity-50 active:scale-95 transition whitespace-nowrap"
                                 disabled={bidAmount <= (activeAuction.highestBid?.amount || 1000) || bidAmount > student.coins}
                             >
                                 입찰하기

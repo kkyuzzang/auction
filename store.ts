@@ -47,30 +47,35 @@ export const useRoomStore = () => {
   }, []);
 
   useEffect(() => {
-    const shouldRun = !studentConn && globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0;
-    
-    if (shouldRun) {
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        if (globalRoom?.activeAuction) {
-          if (globalRoom.activeAuction.timeLeft > 0) {
-            globalRoom.activeAuction.timeLeft -= 1;
-            notify();
-          } else {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            closeAuction();
+    // 교사(서버) 사이드에서만 타이머를 동작시킴
+    if (studentConn) return;
+
+    if (globalRoom?.activeAuction && globalRoom.activeAuction.timeLeft > 0) {
+      if (!timerInterval) {
+        timerInterval = setInterval(() => {
+          if (globalRoom?.activeAuction) {
+            if (globalRoom.activeAuction.timeLeft > 0) {
+              globalRoom.activeAuction.timeLeft -= 1;
+              if (globalRoom.activeAuction.timeLeft <= 0) {
+                // 시간이 다 되면 즉시 마감 처리
+                clearInterval(timerInterval);
+                timerInterval = null;
+                closeAuction();
+              } else {
+                notify();
+              }
+            }
           }
-        }
-      }, 1000);
+        }, 1000);
+      }
     } else {
       if (timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
       }
     }
-    return () => { if (timerInterval) clearInterval(timerInterval); };
-  }, [globalRoom?.activeAuction?.timeLeft, !!studentConn]);
+    return () => {}; 
+  }, [globalRoom?.activeAuction, !!studentConn]);
 
   const createRoom = useCallback((teacherId: string, customCode: string) => {
     const code = customCode.toUpperCase().trim();
